@@ -180,6 +180,227 @@ Google开源的 Dapper链路追踪组件，并在2010年发表了论文《Dapper
 
 最后作为Eureka Client，需要在程序的启动类UserServiceApplication加上@EnableEurekaClient注解。
 
+## 构建feign-server
+
+在主Maven工程下建一个Module工程，取名为serice-feign，作为服务消费，对外暴露API接口。在它的pom文件引入Feign的起步依赖spring-cloud-starter-feign、Eureka的起步依赖spring-cloud-starter-eureka、Web的起步依赖spring-boot-starter-web、Hystrix Dashboard (断路器：Hystrix 仪表盘)spring-cloud-starter-hystrix-dashboard，代码如下：
+
+    <dependencies>
+    		<!--Hystrix Dashboard (断路器：Hystrix 仪表盘)-->
+    		<dependency>
+    			<groupId>org.springframework.boot</groupId>
+    			<artifactId>spring-boot-starter-actuator</artifactId>
+    		</dependency>
+    		<dependency>
+    			<groupId>org.springframework.cloud</groupId>
+    			<artifactId>spring-cloud-starter-hystrix-dashboard</artifactId>
+    		</dependency>
+    
+    		<dependency>
+    			<groupId>org.springframework.cloud</groupId>
+    			<artifactId>spring-cloud-starter-eureka</artifactId>
+    		</dependency>
+    		<dependency>
+    			<groupId>org.springframework.cloud</groupId>
+    			<artifactId>spring-cloud-starter-feign</artifactId>
+    		</dependency>
+    
+    		<dependency>
+    			<groupId>org.springframework.boot</groupId>
+    			<artifactId>spring-boot-starter-web</artifactId>
+    		</dependency>
+    		<dependency>
+    			<groupId>org.springframework.boot</groupId>
+    			<artifactId>spring-boot-starter-test</artifactId>
+    			<scope>test</scope>
+    		</dependency>
+    	</dependencies>
+
+在配置文件applicatiom.yml，指定了程序名为service-feign，端口为8765，服务注册地址为[http://localhost:8761/eureka/](http://localhost:8761/eureka/)
+
+    eureka:
+      client:
+        serviceUrl:
+          defaultZone: http://localhost:8761/eureka/
+    server:
+      port: 8765
+    spring:
+      application:
+        name: service-feign
+        
+在程序的启动类ServiceFeignApplication ，加上@EnableFeignClients注解开启Feign的功能，加入@EnableHystrixDashboard注解，开启hystrixDashboard：
+
+    @SpringBootApplication
+    @EnableDiscoveryClient
+    @EnableFeignClients
+    @EnableHystrixDashboard
+    public class FeignServiceApplication {
+    
+    	public static void main(String[] args) {
+    		SpringApplication.run(FeignServiceApplication.class, args);
+    	}
+    }
+定义一个feign接口，通过@ FeignClient（“服务名”），来指定调用哪个服务。比如在代码中调用了user-service服务的“/user/hi”接口，代码如下
+
+    @FeignClient(value = "user-service",fallback = SchedualServiceHiHystric.class)
+    public interface SchedualServiceHi {
+    	@RequestMapping(value = "/user/hi",method = RequestMethod.GET)
+    	String sayHiFromClientOne(@RequestParam(value = "name") String name);
+    }
+    
+    
+在Web层的controller层，对外暴露一个”/user/hi”的API接口，通过上面定义的Feign客户端SchedualServiceHi 来消费服务。代码如下：
+    
+    @RestController
+    @RequestMapping("/user")
+    public class HiController {
+    	
+    	@Autowired
+    	SchedualServiceHi schedualServiceHi;
+    	
+    	@RequestMapping(value = "/hi",method = RequestMethod.GET)
+    	public String sayHi(@RequestParam String name){
+    		return schedualServiceHi.sayHiFromClientOne(name);
+    	}
+    }
+打开浏览器：访问[http://localhost:8765/hystrix](http://localhost:8765/hystrix),界面如下：
+![2.jpg](http://upload-images.jianshu.io/upload_images/2279594-64f5fa9d0d96ee21.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/600)
+        
+
+## 构建 config-server
+
+在主Maven工程下建一个Module工程，取名为config-server,其pom.xml:
+
+    <dependencies>
+    		<dependency>
+    			<groupId>org.springframework.boot</groupId>
+    			<artifactId>spring-boot-starter-web</artifactId>
+    		</dependency>
+    
+    		<dependency>
+    			<groupId>org.springframework.cloud</groupId>
+    			<artifactId>spring-cloud-config-server</artifactId>
+    		</dependency>
+    
+    		<dependency>
+    			<groupId>org.springframework.boot</groupId>
+    			<artifactId>spring-boot-starter-test</artifactId>
+    			<scope>test</scope>
+    		</dependency>
+    
+    		<dependency>
+    			<groupId>org.springframework.cloud</groupId>
+    			<artifactId>spring-cloud-starter-eureka</artifactId>
+    		</dependency>
+    	</dependencies>
+
+在程序的入口Application类加上@EnableConfigServer注解开启配置服务器的功能，代码如下：
+    
+    @SpringBootApplication
+    @EnableConfigServer
+    public class ConfigServerApplication {
+    
+        public static void main(String[] args) {
+            SpringApplication.run(ConfigServerApplication.class, args);
+        }
+    }
+
+在配置文件applicatiom.yml，指定了程序名为config-server，端口为8888，服务注册地址为[http://localhost:8761/eureka/](http://localhost:8761/eureka/)
+    
+    server:
+      port: 8888
+    spring:
+      application:
+        name: config-server
+      cloud:
+        config:
+          server:
+            git:
+              uri: https://github.com/mliyz/SpringcloudConfig/
+              search-paths: respodev
+              username: mliyz
+              password: liyuzhang
+          label: master
+    eureka:
+      client:
+        service-url:
+          defaultZone: http://localhost:8761/eureka/
+
+    spring.cloud.config.server.git.uri：配置git仓库地址
+    spring.cloud.config.server.git.searchPaths：配置仓库路径
+    spring.cloud.config.label：配置仓库的分支
+    spring.cloud.config.server.git.username：访问git仓库的用户名
+    spring.cloud.config.server.git.password：访问git仓库的用户密码
+    
+远程仓库[https://github.com/mliyz/SpringcloudConfig.git](https://github.com/mliyz/SpringcloudConfig.git)中有个文件 application.yml文件中有一个属性：
+    
+    foo: version 2.2.1
+
+启动程序：访问[http://localhost:8888/foo/dev](http://localhost:8888/foo/dev)
+
+    {"name":"foo","profiles":["dev"],"label":null,"version":null,"state":null,"propertySources":[{"name":"https://github.com/mliyz/SpringcloudConfig/respodev/application.yml","source":{"foo":"version 2.2.1"}}]}
+
+
+
+## 构建 service-turbine
+
+在主Maven工程下建一个Module工程,取名为config-server,其pom.xml:
+
+    <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-turbine</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-netflix-turbine</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-actuator</artifactId>
+            </dependency>
+    
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-test</artifactId>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        
+在其入口类ServiceTurbineApplication加上注解@EnableTurbine，开启turbine，@EnableTurbine注解包含了@EnableDiscoveryClient注解，即开启了注册服务。
+
+    @SpringBootApplication
+    @EnableTurbine
+    public class ServiceTurbineApplication {
+    
+        public static void main(String[] args) {
+    
+                new SpringApplicationBuilder(ServiceTurbineApplication.class).web(true).run(args);
+        }
+    }
+    
+配置文件application.yml：
+    
+    spring:
+      application.name: service-turbine
+    server:
+      port: 8769
+    security.basic.enabled: false
+    turbine:
+      aggregator:
+        clusterConfig: default   # 指定聚合哪些集群，多个使用","分割，默认为default。可使用http://.../turbine.stream?cluster={clusterConfig之一}访问
+      appConfig: feign-service,gateway-service  ### 配置Eureka中的serviceId列表，表明监控哪些服务
+      clusterNameExpression: new String("default")
+      # 1. clusterNameExpression指定集群名称，默认表达式appName；此时：turbine.aggregator.clusterConfig需要配置想要监控的应用名称
+      # 2. 当clusterNameExpression: default时，turbine.aggregator.clusterConfig可以不写，因为默认就是default
+      # 3. 当clusterNameExpression: metadata['cluster']时，假设想要监控的应用配置了eureka.instance.metadata-map.cluster: ABC，则需要配置，同时turbine.aggregator.clusterConfig: ABC
+    eureka:
+      client:
+        serviceUrl:
+          defaultZone: http://localhost:8761/eureka/
+    
+    
+
+
 ## 构建gateway-service
 
 新建一个名为gateway-service工程，这个工程作为服务网关，将请求转发到user-service，作为Zipkin客户端，需要将链路数据上传给Zipkin Server，同时它也作为Eureka Client。它在pom文件除了需要继承主Maven工程的 pom，还需引入的依赖如下：
@@ -349,8 +570,109 @@ Google开源的 Dapper链路追踪组件，并在2010年发表了论文《Dapper
       storage:
         type: mysql
         
-另外需要在Mysql数据库中初始化数据库脚本，数据库脚本地址：[]
+另外需要在Mysql数据库中初始化数据库脚本，数据库脚本地址：[https://github.com/mliyz/springcloud/blob/master/chapter-sleuth/zipkin-server/src/main/resources/spring-cloud-zipkin.sql](https://github.com/mliyz/springcloud/blob/master/chapter-sleuth/zipkin-server/src/main/resources/spring-cloud-zipkin.sql)
+    
+    CREATE TABLE IF NOT EXISTS zipkin_spans (
+      `trace_id_high` BIGINT NOT NULL DEFAULT 0 COMMENT 'If non zero, this means the trace uses 128 bit traceIds instead of 64 bit',
+      `trace_id` BIGINT NOT NULL,
+      `id` BIGINT NOT NULL,
+      `name` VARCHAR(255) NOT NULL,
+      `parent_id` BIGINT,
+      `debug` BIT(1),
+      `start_ts` BIGINT COMMENT 'Span.timestamp(): epoch micros used for endTs query and to implement TTL',
+      `duration` BIGINT COMMENT 'Span.duration(): micros used for minDuration and maxDuration query'
+    ) ENGINE=InnoDB ROW_FORMAT=COMPRESSED CHARACTER SET=utf8 COLLATE utf8_general_ci;
+    
+    ALTER TABLE zipkin_spans ADD UNIQUE KEY(`trace_id_high`, `trace_id`, `id`) COMMENT 'ignore insert on duplicate';
+    ALTER TABLE zipkin_spans ADD INDEX(`trace_id_high`, `trace_id`, `id`) COMMENT 'for joining with zipkin_annotations';
+    ALTER TABLE zipkin_spans ADD INDEX(`trace_id_high`, `trace_id`) COMMENT 'for getTracesByIds';
+    ALTER TABLE zipkin_spans ADD INDEX(`name`) COMMENT 'for getTraces and getSpanNames';
+    ALTER TABLE zipkin_spans ADD INDEX(`start_ts`) COMMENT 'for getTraces ordering and range';
+    
+    CREATE TABLE IF NOT EXISTS zipkin_annotations (
+      `trace_id_high` BIGINT NOT NULL DEFAULT 0 COMMENT 'If non zero, this means the trace uses 128 bit traceIds instead of 64 bit',
+      `trace_id` BIGINT NOT NULL COMMENT 'coincides with zipkin_spans.trace_id',
+      `span_id` BIGINT NOT NULL COMMENT 'coincides with zipkin_spans.id',
+      `a_key` VARCHAR(255) NOT NULL COMMENT 'BinaryAnnotation.key or Annotation.value if type == -1',
+      `a_value` BLOB COMMENT 'BinaryAnnotation.value(), which must be smaller than 64KB',
+      `a_type` INT NOT NULL COMMENT 'BinaryAnnotation.type() or -1 if Annotation',
+      `a_timestamp` BIGINT COMMENT 'Used to implement TTL; Annotation.timestamp or zipkin_spans.timestamp',
+      `endpoint_ipv4` INT COMMENT 'Null when Binary/Annotation.endpoint is null',
+      `endpoint_ipv6` BINARY(16) COMMENT 'Null when Binary/Annotation.endpoint is null, or no IPv6 address',
+      `endpoint_port` SMALLINT COMMENT 'Null when Binary/Annotation.endpoint is null',
+      `endpoint_service_name` VARCHAR(255) COMMENT 'Null when Binary/Annotation.endpoint is null'
+    ) ENGINE=InnoDB ROW_FORMAT=COMPRESSED CHARACTER SET=utf8 COLLATE utf8_general_ci;
+    
+    ALTER TABLE zipkin_annotations ADD UNIQUE KEY(`trace_id_high`, `trace_id`, `span_id`, `a_key`, `a_timestamp`) COMMENT 'Ignore insert on duplicate';
+    ALTER TABLE zipkin_annotations ADD INDEX(`trace_id_high`, `trace_id`, `span_id`) COMMENT 'for joining with zipkin_spans';
+    ALTER TABLE zipkin_annotations ADD INDEX(`trace_id_high`, `trace_id`) COMMENT 'for getTraces/ByIds';
+    ALTER TABLE zipkin_annotations ADD INDEX(`endpoint_service_name`) COMMENT 'for getTraces and getServiceNames';
+    ALTER TABLE zipkin_annotations ADD INDEX(`a_type`) COMMENT 'for getTraces';
+    ALTER TABLE zipkin_annotations ADD INDEX(`a_key`) COMMENT 'for getTraces';
+    ALTER TABLE zipkin_annotations ADD INDEX(`trace_id`, `span_id`, `a_key`) COMMENT 'for dependencies job';
+    
+    CREATE TABLE IF NOT EXISTS zipkin_dependencies (
+      `day` DATE NOT NULL,
+      `parent` VARCHAR(255) NOT NULL,
+      `child` VARCHAR(255) NOT NULL,
+      `call_count` BIGINT,
+      `error_count` BIGINT
+    ) ENGINE=InnoDB ROW_FORMAT=COMPRESSED CHARACTER SET=utf8 COLLATE utf8_general_ci;
+    
+    ALTER TABLE zipkin_dependencies ADD UNIQUE KEY(`day`, `parent`, `child`);
+    
+## 
 
 ## 项目演示
 
-完整的项目搭建完毕，依次启动eureka-server、zipkin-server、config-server、user-service、feign-service、gateway-service、service-turbine。在浏览器上访问[http://localhost:5000/user-api/user/hi](http://localhost:5000/user-api/user/hi)，浏览器显示：
+完整的项目搭建完毕，依次启动eureka-server、zipkin-server、config-server、user-service、feign-service、gateway-service、service-turbine。
+在浏览器上访问[http://localhost:5000/user-api/user/hi?name=aa&token=22](http://localhost:5000/user-api/user/hi?name=aa&token=22)，浏览器显示：
+
+    I'm liyz version 2.0.1
+    
+在浏览器上访问[http://localhost:5000/user-feign-api/user/hi?name=aa&token=22](http://localhost:5000/user-feign-api/user/hi?name=aa&token=22)，浏览器显示：
+
+    I'm liyz version 2.0.1
+    
+
+
+    
+访问[http://localhost:9411](http://localhost:9411)，即访问Zipkin的展示界面，界面显示如图所示：
+
+![3.jpg](http://upload-images.jianshu.io/upload_images/2279594-3e4823d1adf84a06.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+这个界面主要用来查找服务的调用情况，可以根据服务名、开始时间、结束时间、请求消耗的时间等条件来查找。点击“Find Trackes”按钮，界面如图所示。从图可知服务的调用情况，比如服务调用时间、服务的消耗时间，服务调用的链路情况。
+
+![4.jpg](http://upload-images.jianshu.io/upload_images/2279594-339e3524b7ce52f9.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+点击Dependences按钮，可以查看服务的依赖关系，在本案例中，gateway-service将请求转发到了user-service，它们的依赖关系如图：
+
+![5.jpg](http://upload-images.jianshu.io/upload_images/2279594-25c9247fbc0a2cd5.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+访问[http://localhost:8761/](http://localhost:8761/)，即访问Euerka的展示界面，界面显示如图所示：
+
+![euerka.jpg](https://github.com/mliyz/SpringcloudConfig/blob/master/image/euerka.jpg)
+
+访问[https://github.com/mliyz/SpringcloudConfig/blob/master/image/euerka.jpg](https://github.com/mliyz/SpringcloudConfig/blob/master/image/euerka.jpg)查看图片
+
+访问[http://localhost:8769/turbine.stream](http://localhost:8769/turbine.stream)，即访问turbin的展示界面，界面显示如图所示：
+
+![turbine.jpg](https://github.com/mliyz/SpringcloudConfig/blob/master/image/trubine.jpg)
+
+访问[https://github.com/mliyz/SpringcloudConfig/blob/master/image/trubine.jpg](https://github.com/mliyz/SpringcloudConfig/blob/master/image/trubine.jpg)查看图片
+
+访问[http://localhost:8765/hystrix](http://localhost:8765/hystrix)，即访问hystrix的展示界面，界面显示如图所示：
+
+![hystrix.jpg](https://img-blog.csdn.net/20170416140029540?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvZm9yZXpw/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
+
+访问[https://github.com/mliyz/SpringcloudConfig/blob/master/image/hystrix.jpg](https://github.com/mliyz/SpringcloudConfig/blob/master/image/hystrix.jpg)查看图片
+
+输入监控流[http://localhost:8769/turbine.stream](http://localhost:8769/turbine.stream) ,点击monitor stream 进入页面：
+
+![stream.jpg](https://github.com/mliyz/SpringcloudConfig/blob/master/image/HystrixMonitor.jpg)
+
+访问[https://github.com/mliyz/SpringcloudConfig/blob/master/image/HystrixMonitor.jpg](https://github.com/mliyz/SpringcloudConfig/blob/master/image/HystrixMonitor.jpg)查看图片
+
+
+
+
