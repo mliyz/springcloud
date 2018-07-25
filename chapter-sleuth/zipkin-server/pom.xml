@@ -22,12 +22,12 @@
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-eureka</artifactId>
 		</dependency>
-
-		<dependency>
+		<!--使用@EnableZipkinServer注解方式只需要依赖如下两个包 -->
+		<!--<dependency>
 			<groupId>io.zipkin.java</groupId>
 			<artifactId>zipkin-server</artifactId>
 			<version>1.19.0</version>
-		</dependency>
+		</dependency>-->
 
 		<dependency>
 			<groupId>io.zipkin.java</groupId>
@@ -39,7 +39,7 @@
 			<groupId>io.zipkin.java</groupId>
 			<artifactId>zipkin-autoconfigure-ui</artifactId>
 		</dependency>
-
+		<!-- 采用中间件的形式跟踪消息 -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-sleuth-zipkin-stream</artifactId>
@@ -48,6 +48,7 @@
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-stream-rabbit</artifactId>
 		</dependency>
+		<!-- end  -->
 		<dependency>
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>
@@ -56,6 +57,7 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-jdbc</artifactId>
 		</dependency>
+
 		<dependency>
 			<groupId>io.zipkin.java</groupId>
 			<artifactId>zipkin</artifactId>
@@ -66,7 +68,56 @@
 			<artifactId>zipkin-autoconfigure-storage-elasticsearch-http</artifactId>
 			<version>1.28.1</version>
 		</dependency>
+		<!-- session共享所添加配置-->
+		<!--<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-redis</artifactId>
+			<version>1.4.6.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.session</groupId>
+			<artifactId>spring-session-data-redis</artifactId>
+		</dependency>-->
 	</dependencies>
+
+	<profiles>
+		<profile>
+			<id>dev</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<profiles.active>dev</profiles.active>
+			</properties>
+		</profile>
+		<profile>
+			<id>test</id>
+			<properties>
+				<profiles.active>test</profiles.active>
+			</properties>
+		</profile>
+		<profile>
+			<id>pro</id>
+			<properties>
+				<profiles.active>pro</profiles.active>
+			</properties>
+		</profile>
+		<profile>
+			<id>uat</id>
+			<properties>
+				<profiles.active>uat</profiles.active>
+			</properties>
+		</profile>
+		<profile>
+			<id>docker</id>
+			<activation>
+				<activeByDefault>false</activeByDefault>
+			</activation>
+			<properties>
+				<profiles.active>docker</profiles.active>
+			</properties>
+		</profile>
+	</profiles>
 
 	<build>
 		<plugins>
@@ -75,6 +126,29 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
+		<resources>
+			<resource>
+				<directory>src/main/resources/</directory>
+				<excludes>
+					<exclude>test/*</exclude>
+					<exclude>dev/*</exclude>
+					<exclude>pro/*</exclude>
+					<exclude>uat/*</exclude>
+					<exclude>docker/*</exclude>
+				</excludes>
+			</resource>
+			<resource>
+				<directory>src/main/resources/${profiles.active}</directory>
+			</resource>
+			<resource>
+				<directory>src/main/resources/docker</directory>
+				<includes>
+					<include>*</include>
+				</includes>
+				<targetPath>${project.build.directory}/</targetPath>
+				<filtering>true</filtering>
+			</resource>
+		</resources>
 	</build>
 
 

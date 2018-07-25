@@ -1,0 +1,58 @@
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+server:
+  port: 9411
+spring:
+  application:
+    name: zipkin-server
+  sleuth:
+#    sampler:
+#      percentage: 1.0
+    enabled: false
+  rabbitmq:
+      host: localhost
+      port: 5672
+      username: guest
+      password: guest
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/spring-cloud-zipkin?useUnicode=true&characterEncoding=utf8&useSSL=false
+    username: root
+    password: 1234
+    test-on-borrow: true
+    validation-query: select 1
+    initial-size: 50
+    max-active: 50
+    max-idle: 50
+    min-idle: 50
+  jpa:
+      show-sql: true
+      database-platform: org.hibernate.dialect.MySQLDialect
+      hibernate:
+        ddl-auto: update
+      properties:
+        hibernate:
+          current_session_context_class: org.springframework.orm.hibernate5.SpringSessionContext
+  http:
+    multipart:
+      max-file-size: 100Mb
+      max-request-size: 1000Mb
+  session:
+    store-type: none
+
+zipkin:
+  storage:
+    type: mysql
+
+#####################################################################################################
+# 打印日志
+logging:
+  level:
+    root: INFO
+    org.hibernate: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.type.descriptor.sql.BasicExtractor: TRACE
+    com.springms: DEBUG
+####################################################################################################

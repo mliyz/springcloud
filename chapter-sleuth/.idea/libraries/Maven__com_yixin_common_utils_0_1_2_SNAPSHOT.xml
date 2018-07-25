@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: com.yixin:common-utils:0.1.2-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/yixin/common-utils/0.1.2-SNAPSHOT/common-utils-0.1.2-20170804.014343-20.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/com/yixin/common-utils/0.1.2-SNAPSHOT/common-utils-0.1.2-20170804.014343-20-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/yixin/common-utils/0.1.2-SNAPSHOT/common-utils-0.1.2-20170804.014343-20-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

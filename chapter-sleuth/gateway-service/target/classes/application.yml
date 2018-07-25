@@ -1,7 +1,8 @@
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
+#      defaultZone: http://localhost:8761/eureka/
+      defaultZone:  http://localhost:9003/euerka/
 
 server:
   port: 5000
@@ -12,7 +13,8 @@ spring:
     sampler:
       percentage: 1.0
   zipkin:
-    base-url: http://localhost:9411
+#    base-url: http://localhost:9411
+    base-url: http://localhost:9001
   rabbitmq:
     host: localhost
     port: 5672
@@ -26,3 +28,6 @@ zuul:
     api-b:
       path: /user-feign-api/**
       serviceId: service-feign
+    api-account:
+      path: /account-api/**
+      serviceId: account-service

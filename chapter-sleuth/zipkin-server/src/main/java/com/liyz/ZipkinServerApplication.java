@@ -5,6 +5,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
 import org.springframework.cloud.sleuth.zipkin.stream.EnableZipkinStreamServer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
 import zipkin.storage.mysql.MySQLStorage;
 
 import javax.sql.DataSource;
@@ -18,6 +20,8 @@ import javax.sql.DataSource;
 @SpringBootApplication
 @EnableEurekaClient
 @EnableZipkinStreamServer
+@Configuration
+@EnableAsync
 public class ZipkinServerApplication {
 
 	public static void main(String[] args) {
